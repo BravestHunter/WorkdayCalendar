@@ -16,18 +16,18 @@
 
         public DateTime GetWorkdayIncrement(DateTime startDate, decimal incrementInWorkdays)
         {
+            if (incrementInWorkdays == 0)
+            {
+                return startDate;
+            }
+
             decimal remainingDays = Math.Abs(incrementInWorkdays);
-            var currentDate = startDate;
             int direction = Math.Sign(incrementInWorkdays);
+            var currentDate = NormalizeDate(startDate, direction);
 
             while (remainingDays > 0)
             {
-                currentDate = currentDate.AddDays(direction);
-
-                if (!IsWorkingDay(currentDate))
-                {
-                    continue;
-                }
+                currentDate = FindNextWorkingDay(currentDate, direction);
 
                 remainingDays -= 1;
                 if (remainingDays >= 1)
@@ -37,63 +37,25 @@
 
                 var offset = TimeSpan.FromHours((double)remainingDays * _workingDaySchedule.Duration.TotalHours);
 
-                if (direction > 0)
+                bool offsetOutOfWorkingHours = direction > 0
+                    ? currentDate.TimeOfDay + offset > _workingDaySchedule.StopTimeSpan
+                    : currentDate.TimeOfDay - offset < _workingDaySchedule.StartTimeSpan;
+                if (offsetOutOfWorkingHours)
                 {
-                    if (TimeOnly.FromTimeSpan(startDate.TimeOfDay) > _workingDaySchedule.StopTime)
-                    {
-                        currentDate = currentDate.Date
-                            .AddDays(1)
-                            .Add(_workingDaySchedule.StartTime.ToTimeSpan());
-                    }
-                    else if (TimeOnly.FromTimeSpan(startDate.TimeOfDay) < _workingDaySchedule.StartTime)
-                    {
-                        currentDate = currentDate.Date
-                            .Add(_workingDaySchedule.StartTime.ToTimeSpan());
-                    }
+                    currentDate = FindNextWorkingDay(currentDate, direction);
 
-                    if (currentDate.TimeOfDay + offset > _workingDaySchedule.StopTime.ToTimeSpan())
+                    if (direction > 0)
                     {
-                        // Move to the next working day and apply the remaining time
-                        currentDate = currentDate.Date.AddDays(1);
-                        while (!IsWorkingDay(currentDate))
-                        {
-                            currentDate = currentDate.AddDays(1);
-                        }
-                        currentDate = currentDate.Date.Add(_workingDaySchedule.StartTime.ToTimeSpan() + (offset - (_workingDaySchedule.StopTime.ToTimeSpan() - currentDate.TimeOfDay)));
+                        currentDate = currentDate.Date.Add(_workingDaySchedule.StartTimeSpan + (offset - (_workingDaySchedule.StopTimeSpan - currentDate.TimeOfDay)));
                     }
                     else
                     {
-                        currentDate = currentDate.Date.Add(currentDate.TimeOfDay + offset);
+                        currentDate = currentDate.Date.Add(_workingDaySchedule.StopTimeSpan - (offset - (currentDate.TimeOfDay - _workingDaySchedule.StartTimeSpan)));
                     }
                 }
                 else
                 {
-                    if (TimeOnly.FromTimeSpan(startDate.TimeOfDay) > _workingDaySchedule.StopTime)
-                    {
-                        currentDate = currentDate.Date
-                            .Add(_workingDaySchedule.StopTime.ToTimeSpan());
-                    }
-                    else if (TimeOnly.FromTimeSpan(startDate.TimeOfDay) < _workingDaySchedule.StartTime)
-                    {
-                        currentDate = currentDate.Date
-                            .AddDays(-1)
-                            .Add(_workingDaySchedule.StopTime.ToTimeSpan());
-                    }
-
-                    if (currentDate.TimeOfDay - offset < _workingDaySchedule.StartTime.ToTimeSpan())
-                    {
-                        // Move to the previous working day and apply the remaining time
-                        currentDate = currentDate.Date.AddDays(-1);
-                        while (!IsWorkingDay(currentDate))
-                        {
-                            currentDate = currentDate.AddDays(-1);
-                        }
-                        currentDate = currentDate.Date.Add(_workingDaySchedule.StopTime.ToTimeSpan() - (offset - (currentDate.TimeOfDay - _workingDaySchedule.StartTime.ToTimeSpan())));
-                    }
-                    else
-                    {
-                        currentDate = currentDate.Date.Add(currentDate.TimeOfDay - offset);
-                    }
+                    currentDate = currentDate.Date.Add(currentDate.TimeOfDay + direction * offset);
                 }
 
                 remainingDays = 0;
@@ -155,6 +117,58 @@
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Adjusts the date to the nearest valid working time based on the direction.
+        /// </summary>
+        private DateTime NormalizeDate(DateTime date, int direction)
+        {
+            DateTime normalizedDate = date;
+
+            if (direction > 0)
+            {
+                if (TimeOnly.FromTimeSpan(normalizedDate.TimeOfDay) > _workingDaySchedule.StopTime)
+                {
+                    normalizedDate = normalizedDate.Date
+                        .AddDays(1)
+                        .Add(_workingDaySchedule.StartTimeSpan);
+                }
+                else if (TimeOnly.FromTimeSpan(normalizedDate.TimeOfDay) < _workingDaySchedule.StartTime)
+                {
+                    normalizedDate = normalizedDate.Date
+                        .Add(_workingDaySchedule.StartTimeSpan);
+                }
+            }
+            else
+            {
+                if (TimeOnly.FromTimeSpan(normalizedDate.TimeOfDay) > _workingDaySchedule.StopTime)
+                {
+                    normalizedDate = normalizedDate.Date
+                        .Add(_workingDaySchedule.StopTimeSpan);
+                }
+                else if (TimeOnly.FromTimeSpan(normalizedDate.TimeOfDay) < _workingDaySchedule.StartTime)
+                {
+                    normalizedDate = normalizedDate.Date
+                        .AddDays(-1)
+                        .Add(_workingDaySchedule.StopTimeSpan);
+                }
+            }
+
+            return normalizedDate;
+        }
+
+        /// <summary>
+        /// Finds the next working day in the specified direction, skipping non-working days.
+        /// </summary>
+        private DateTime FindNextWorkingDay(DateTime date, int direction)
+        {
+            DateTime nextDate = date.AddDays(direction);
+            while (!IsWorkingDay(nextDate))
+            {
+                nextDate = nextDate.AddDays(direction);
+            }
+            return nextDate;
         }
     }
 }
