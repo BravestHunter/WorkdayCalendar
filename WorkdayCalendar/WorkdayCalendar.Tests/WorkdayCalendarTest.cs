@@ -11,7 +11,9 @@
                 new object[] { new DateTime(2004, 5, 24, 8, 3, 0), 12.782709, new DateTime(2004, 6, 10, 14, 18, 0) },
                 new object[] { new DateTime(2004, 5, 24, 7, 3, 0), 8.276628, new DateTime(2004, 6, 4, 10, 12, 0) },
 
-                new object[] { new DateTime(2004, 5, 24, 7, 3, 0), 0, new DateTime(2004, 5, 24, 7, 3, 0) },
+                new object[] { new DateTime(2004, 5, 24, 7, 0, 0), 0, new DateTime(2004, 5, 24, 7, 0, 0) },
+                new object[] { new DateTime(2004, 5, 24, 8, 0, 0), 0.5, new DateTime(2004, 5, 24, 12, 0, 0) },
+                new object[] { new DateTime(2004, 5, 24, 7, 0, 0), 0.5, new DateTime(2004, 5, 24, 12, 0, 0) },
             };
 
         private IWorkdayCalendar Calendar

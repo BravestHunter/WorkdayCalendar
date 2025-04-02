@@ -25,16 +25,14 @@
             int direction = Math.Sign(incrementInWorkdays);
             var currentDate = NormalizeDate(startDate, direction);
 
-            while (remainingDays > 0)
+            while (remainingDays > 1)
             {
-                currentDate = FindNextWorkingDay(currentDate, direction);
-
                 remainingDays -= 1;
-                if (remainingDays >= 1)
-                {
-                    continue;
-                }
+                currentDate = FindNextWorkingDay(currentDate, direction);
+            }
 
+            if (remainingDays > 0)
+            {
                 var offset = TimeSpan.FromHours((double)remainingDays * _workingDaySchedule.Duration.TotalHours);
 
                 bool offsetOutOfWorkingHours = direction > 0
@@ -57,8 +55,6 @@
                 {
                     currentDate = currentDate.Date.Add(currentDate.TimeOfDay + direction * offset);
                 }
-
-                remainingDays = 0;
             }
 
             // Round the time to minute based on the direction
